@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>4Sum Problem – Visualizer</title>
+    <style>
+      body { font-family: Arial, sans-serif; background: #f5f7fa; padding: 20px; }
+      h1 { margin-bottom: 5px; }
+      input, select { width: 400px; padding: 8px; font-size: 16px; }
+      button { padding: 8px 14px; font-size: 16px; cursor: pointer; margin-left: 8px; }
+      #chart { display: flex; align-items: flex-end; height: 300px; margin-top: 30px; border-left: 2px solid #333; border-bottom: 2px solid #333; padding: 10px; gap: 6px; }
+      .bar { width: 30px; background: steelblue; position: relative; transition: background 0.3s; }
+      .bar.i { background: orange; }
+      .bar.j { background: crimson; }
+      .bar.left { background: #00b894; }
+      .bar.right { background: #0984e3; }
+      .bar.found { background: gold !important; }
+      .bar span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 12px; }
+      #info { margin-top: 20px; font-size: 18px; }
+      #controls { margin-top: 18px; }
+      #found { margin-top: 20px; font-size: 16px; }
+      #targetInput { width: 100px; }
+    </style>
+  </head>
+  <body>
+    <h1>4Sum Problem – Animation</h1>
+    <p>Enter array (comma separated) and target:</p>
+    <input id="input" value="1,0,-1,0,-2,2" />
+    <input id="targetInput" value="0" type="number" />
+    <button onclick="start()">Start Animation</button>
+    <div id="controls" style="display:none;">
+      <button onclick="prevStep()">⏮️ Prev</button>
+      <button onclick="nextStep()">⏭️ Next</button>
+      <button onclick="toggleAutoPlay()" id="autoBtn">▶️ Auto</button>
+      <button onclick="reset()">🔄 Reset</button>
+    </div>
+    <div id="chart"></div>
+    <div id="info"></div>
+    <div id="found"><b>Found quadruplets:</b> <span id="foundList"></span></div>
+    <script>
+      let nums = [], target = 0, steps = [], currentStep = 0, autoPlaying = false, interval = null, found = [];
+
+      function start() {
+        clearInterval(interval);
+        document.getElementById("controls").style.display = "block";
+        autoPlaying = false;
+        document.getElementById("autoBtn").textContent = "▶️ Auto";
+        found = [];
+        document.getElementById("foundList").textContent = '';
+
+        nums = document.getElementById("input").value.split(",").map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+        target = parseInt(document.getElementById("targetInput").value);
+        if (nums.length < 4) { alert("Enter at least four numbers"); return; }
+        let new_nums = [...nums].sort((a,b)=>a-b);
+        let n_len = new_nums.length;
+        steps = [];
+        let triplet_arr = [];
+        if (n_len === 4) {
+          let sum = new_nums[0]+new_nums[1]+new_nums[2]+new_nums[3];
+          let foundIt = (sum === target);
+          if (foundIt) triplet_arr.push([new_nums[0], new_nums[1], new_nums[2], new_nums[3]]);
+          steps.push({i:0,j:1,left:2,right:3,quad:[new_nums[0],new_nums[1],new_nums[2],new_nums[3]],sum,found:foundIt,triplets:[...triplet_arr]});
+        } else {
+          for (let i=0; i<n_len-3; i++) {
+            for (let j=i+1; j<n_len-2; j++) {
+              let left = j+1, right = n_len-1;
+              while (left < right) {
+                let quad = [new_nums[i], new_nums[j], new_nums[left], new_nums[right]];
+                let sum = quad[0]+quad[1]+quad[2]+quad[3];
+                let foundIt = (sum === target) && !triplet_arr.some(t => t[0]===quad[0]&&t[1]===quad[1]&&t[2]===quad[2]&&t[3]===quad[3]);
+                if (foundIt) triplet_arr.push([...quad]);
+                steps.push({i,j,left,right,quad:[...quad],sum,found:foundIt,triplets:[...triplet_arr]});
+                if (sum < target) left++;
+                else if (sum > target) right--;
+                else left++;
+              }
+            }
+          }
+        }
+        currentStep = 0;
+        draw();
+      }
+
+      function nextStep() {
+        if (currentStep < steps.length - 1) {
+          currentStep++;
+          draw();
+        }
+      }
+      function prevStep() {
+        if (currentStep > 0) {
+          currentStep--;
+          draw();
+        }
+      }
+      function toggleAutoPlay() {
+        if (autoPlaying) {
+          clearInterval(interval);
+          autoPlaying = false;
+          document.getElementById("autoBtn").textContent = "▶️ Auto";
+        } else {
+          autoPlaying = true;
+          document.getElementById("autoBtn").textContent = "⏸️ Pause";
+          interval = setInterval(() => {
+            if (currentStep < steps.length - 1) {
+              currentStep++;
+              draw();
+            } else {
+              clearInterval(interval);
+              autoPlaying = false;
+              document.getElementById("autoBtn").textContent = "▶️ Auto";
+            }
+          }, 1000);
+        }
+      }
+      function reset() {
+        clearInterval(interval);
+        currentStep = 0;
+        autoPlaying = false;
+        document.getElementById("autoBtn").textContent = "▶️ Auto";
+        draw();
+      }
+      function draw() {
+        if (!steps.length) return;
+        const chart = document.getElementById("chart");
+        chart.innerHTML = "";
+        let s = steps[currentStep];
+        let arr = [...nums].sort((a,b)=>a-b);
+        arr.forEach((h, idx) => {
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          if (idx === s.i) bar.classList.add("i");
+          if (idx === s.j) bar.classList.add("j");
+          if (idx === s.left) bar.classList.add("left");
+          if (idx === s.right) bar.classList.add("right");
+          if (s.found && (idx === s.i || idx === s.j || idx === s.left || idx === s.right)) bar.classList.add("found");
+          bar.style.height = (h*25+150) + "px";
+          const label = document.createElement("span");
+          label.textContent = h;
+          bar.appendChild(label);
+          chart.appendChild(bar);
+        });
+        document.getElementById("info").innerHTML = `
+          <b>Step ${currentStep+1} / ${steps.length}</b><br>
+          i = ${s.i}, j = ${s.j}, left = ${s.left}, right = ${s.right}<br>
+          Quadruplet: [${s.quad.join(", ")}]<br>
+          Sum = <b>${s.quad[0]} + ${s.quad[1]} + ${s.quad[2]} + ${s.quad[3]} = ${s.sum}</b><br>
+          ${s.found ? `<span style='color:gold'>Found quadruplet!</span>` : ''}
+        `;
+        document.getElementById("foundList").textContent = s.triplets.map(t=>`[${t.join(", ")}]`).join(" ");
+      }
+    </script>
+  </body>
+</html>
